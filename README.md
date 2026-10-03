@@ -4,7 +4,41 @@ A Python desktop workspace for FIDO2 security keys, with a light PySide6 interfa
 
 UI previews: [Saved passkeys](docs/saved-passkeys.png) · [Key settings](docs/key-settings.png) · [Reset confirmation](docs/reset-confirmation.png).
 
-## Run
+## Install (Linux, Windows, macOS)
+
+Install Python 3.10 or newer with pip, download or clone this repository, and run
+its installer as your normal desktop user:
+
+- **Linux:** run `./install.sh`. On Debian/Ubuntu, install `python3-venv` first if
+  it is missing. Launch **FIDO Manager** from your desktop application menu, or
+  run `~/.local/bin/fido-manager` (add `~/.local/bin` to PATH to use the short name).
+- **Windows:** double-click `install.bat`, or run `py -3 install.py` in a terminal.
+  Launch **FIDO Manager** from the Start menu.
+- **macOS:** run `./install.sh`, then open `~/Applications/FIDO Manager.app`.
+
+The installer creates a private virtual environment, installs the pinned
+requirements, copies the application, and creates a launcher. Internet access is
+required for dependencies. You can move or delete the downloaded repository after
+installation. Close the app and rerun the installer from an updated checkout to
+upgrade. No administrator privileges are needed. This adds a menu launcher; it
+does not automatically start the app at login.
+
+Installation locations are `$XDG_DATA_HOME/fido-manager` (default
+`~/.local/share/fido-manager`) on Linux, `%LOCALAPPDATA%\FIDO Manager` on Windows,
+and `~/Library/Application Support/FIDO Manager` on macOS. To uninstall, delete
+that directory and its launcher: Linux `~/.local/bin/fido-manager` and
+`$XDG_DATA_HOME/applications/fido-manager.desktop` (default
+`~/.local/share/applications/fido-manager.desktop`); Windows
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\FIDO Manager.lnk`; macOS
+`~/Applications/FIDO Manager.app`.
+
+Platform dependency wheels must be available for your Python version and CPU.
+Linux still requires a working graphical desktop and distribution-provided Qt
+runtime libraries and security-key udev permissions. Computer-login configuration
+is Linux-only. Windows/macOS launcher generation is covered by automated tests;
+installation and hardware access on those systems require native verification.
+
+## Run from the checkout
 
 After installing the dependencies, launch the app with:
 
