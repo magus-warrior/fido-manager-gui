@@ -16,11 +16,21 @@ its installer as your normal desktop user:
   Launch **FIDO Manager** from the Start menu.
 - **macOS:** run `./install.sh`, then open `~/Applications/FIDO Manager.app`.
 
+On standard Fedora, the installer also installs `pam-u2f`, `pamu2fcfg`, polkit,
+and Qt desktop libraries through an administrator prompt. It then offers to
+register your key and configure computer login. Connect one key and touch it
+when it flashes. Use `./install.sh --setup-login` to request enrollment directly,
+`--skip-login` to defer it, or `--skip-system-packages` when host dependencies
+are already managed separately. Fedora Atomic requires host package layering
+and a reboot before running with `--skip-system-packages`. Noninteractive
+installs defer enrollment unless `--setup-login` is supplied.
+
 The installer creates a private virtual environment, installs the pinned
 requirements, copies the application, and creates a launcher. Internet access is
 required for dependencies. You can move or delete the downloaded repository after
 installation. Close the app and rerun the installer from an updated checkout to
-upgrade. No administrator privileges are needed. This adds a menu launcher; it
+upgrade. The app installs per user; system packages and computer-login setup
+require administrator authentication. This adds a menu launcher; it
 does not automatically start the app at login.
 
 Installation locations are `$XDG_DATA_HOME/fido-manager` (default
@@ -98,16 +108,21 @@ screen unlock, and console login, including vendor configurations in
 `/usr/lib/pam.d`. A detected PAM module is not proof of working authentication;
 test login and screen unlock with your key after setup.
 
-The setup repair requires an existing `/etc/u2f_mappings` registration and the
-working `pam_u2f` line in `/etc/pam.d/sudo`. Fresh-machine enrollment is currently
-not provided by the GUI. FIDO2 credential management does not enroll a key for
-operating-system login. Other operating systems and PAM services are not covered.
+Setup reuses an existing compatible central registration or enrolls your first
+key for computer login. Fresh Fedora systems no longer require a preconfigured
+`sudo` registration. The setup installs missing Fedora enrollment tools, asks you
+to touch the key, and configures detected login services plus `sudo` with password
+fallback. Enrollment has a 90-second timeout. Existing registrations with unknown
+settings and unsupported PAM configurations are left for manual review.
+FIDO2 passkey management remains separate from operating-system login.
+Other operating systems are not covered by computer-login setup.
 
 Setup uses polkit's `pkexec` administrator prompt, backs up changed files under
 `/root`, prints a rollback command, and preserves password fallback. It makes the
 central public registration mapping readable for the user-run Plasma locker while
 keeping it writable only by root. Existing PAM key configurations are skipped.
-Computer-login setup does not reset or replace key credentials. No display-manager restart is needed.
+Computer-login setup does not reset your key or remove saved passkeys.
+GNOME Keyring may still request your account password after key-based login. No display-manager restart is needed.
 
 ## Validation
 

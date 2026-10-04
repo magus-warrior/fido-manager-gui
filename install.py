@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install FIDO Manager for the current user, without administrator privileges."""
 import argparse
+import getpass
 import os
 from pathlib import Path
 import plistlib
@@ -73,9 +74,33 @@ def create_launcher(platform, home, root, python):
     return desktop
 
 
+def fedora_dependencies():
+    release = Path('/etc/os-release')
+    if sys.platform != 'linux' or not release.exists():
+        return
+    if not any(line in ('ID=fedora', 'ID="fedora"') for line in release.read_text().splitlines()):
+        return
+    if Path('/run/ostree-booted').exists():
+        raise OSError('Fedora Atomic: install pam-u2f, pamu2fcfg and polkit with rpm-ostree, reboot, then rerun with --skip-system-packages.')
+    print('Installing Fedora desktop and security-key dependencies (administrator password may be requested).', flush=True)
+    subprocess.run(['sudo', 'dnf', 'install', '-y', 'pam-u2f', 'pamu2fcfg', 'polkit',
+                    'libxkbcommon-x11', 'xcb-util-cursor'], check=True)
+
+
+def setup_login(root):
+    subprocess.run(['sudo', '/usr/bin/python3', str(root / 'repair-plasma-login.py'),
+                    '--user', getpass.getuser(), '--enroll'], check=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args(argv)
+    parser.add_argument('--skip-system-packages', action='store_true', help='Skip Fedora host dependency installation')
+    login = parser.add_mutually_exclusive_group()
+    login.add_argument('--setup-login', action='store_true', help='Enroll a key and configure Linux computer login')
+    login.add_argument('--skip-login', action='store_true', help='Install the app without offering computer-login setup')
+    args = parser.parse_args(argv)
+    if args.setup_login and sys.platform != 'linux':
+        parser.error('Computer-login enrollment is currently supported on Linux only.')
     if sys.version_info < (3, 10):
         parser.error('Python 3.10 or newer is required.')
     if sys.platform not in ('linux', 'darwin', 'win32'):
@@ -89,6 +114,8 @@ def main(argv=None):
     python = environment / ('Scripts/python.exe' if sys.platform == 'win32' else 'bin/python')
     print(f'Installing into {root}', flush=True)
     try:
+        if not args.skip_system_packages:
+            fedora_dependencies()
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(environment)
         subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(SOURCE / 'requirements.txt')], check=True)
@@ -101,6 +128,19 @@ def main(argv=None):
               'On Debian/Ubuntu install python3-venv, then rerun this installer.', file=sys.stderr)
         return 1
     print(f'Installed. Open {NAME} from your application menu.\nLauncher: {launcher}')
+    if sys.platform == 'linux' and not args.skip_login:
+        requested = args.setup_login
+        if not requested and sys.stdin.isatty():
+            print('Computer login setup registers your key, enables key OR password login, and backs up changed files.')
+            requested = input('Set up computer login now? Connect one key and be ready to touch it. [Y/n] ').strip().lower() in ('', 'y', 'yes')
+        if requested:
+            try:
+                setup_login(root)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                print(f'The app is installed, but computer-login setup did not finish: {exc}\nRetry using Computer login → Configure computer login in the app.', file=sys.stderr)
+                return 1
+        else:
+            print('Computer-login setup deferred. You can enroll later from Computer login in the app.')
     return 0
 
 

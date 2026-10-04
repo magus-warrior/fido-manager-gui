@@ -48,3 +48,11 @@ def test_windows_start_menu(tmp_path, monkeypatch):
 
 def test_desktop_quoting():
     assert installer.desktop_quote('/home/a b/100%/run') == '"/home/a b/100%%/run"'
+
+
+def test_installer_enrollment_passes_user_and_flag(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(installer.getpass, 'getuser', lambda: 'alex')
+    monkeypatch.setattr(installer.subprocess, 'run', lambda command, **kwargs: calls.append((command, kwargs)))
+    installer.setup_login(tmp_path)
+    assert calls == [(['sudo', '/usr/bin/python3', str(tmp_path / 'repair-plasma-login.py'), '--user', 'alex', '--enroll'], {'check': True})]

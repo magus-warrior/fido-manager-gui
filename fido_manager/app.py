@@ -498,17 +498,18 @@ class Window(QMainWindow):
             QMessageBox.information(self, "Computer login", error)
             return
         report = "\n".join(label + (": PAM module present (test required)" if enabled
-                                   else ": missing key authentication")
+                                   else ": setup needed")
                            for _, label, enabled in services)
         dialog = QMessageBox(self)
         dialog.setWindowTitle("Computer login setup")
         dialog.setText(report)
         dialog.setInformativeText(
             "Passkey management and computer login use separate registrations. "
-            "Setup reuses your existing pam-u2f registration configured for sudo. "
+            "Setup reuses an existing registration or enrolls your key for this user. "
+            "On Fedora it installs missing enrollment tools. Connect only the key you want to register. "
             "It enables detected login and screen unlock services, preserves password fallback, "
             "and creates backups. Administrator authentication is required. "
-            "A fresh system needs key enrollment with pamu2fcfg before using this repair. "
+            "After approving the administrator prompt, touch your key when it flashes (within 90 seconds). "
             "To test: leave the password empty, submit with Enter / Sign in, then touch the key when prompted.")
         setup = dialog.addButton("Set up detected services", QMessageBox.ButtonRole.AcceptRole)
         dialog.addButton(QMessageBox.StandardButton.Cancel)
@@ -522,13 +523,13 @@ class Window(QMainWindow):
             return
         username = getpass.getuser()
         def configure():
-            result = subprocess.run([pkexec, "/usr/bin/env", "SUDO_USER=" + username,
-                                     "/usr/bin/python3", str(helper)], capture_output=True, text=True)
+            result = subprocess.run([pkexec, "/usr/bin/python3", str(helper),
+                                     "--user", username, "--enroll"], capture_output=True, text=True)
             if result.returncode:
-                raise ValueError(result.stderr.strip() or "Administrator authentication was cancelled.")
+                raise ValueError(result.stderr.strip() or result.stdout.strip() or "Administrator authentication was cancelled.")
             return result.stdout.strip()
         self.run(configure, lambda text: QMessageBox.information(self, "Computer login setup", text),
-                 "Setting up computer login · authenticate in the administrator prompt…")
+                 "Setting up computer login · approve the administrator prompt, then touch your key when it flashes…")
 
     def run(self, job, callback, message, on_error=None):
         if self.busy: return
